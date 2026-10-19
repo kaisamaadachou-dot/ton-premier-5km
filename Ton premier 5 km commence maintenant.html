@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ton premier 5 km commence maintenant</title>
+<style>
+:root{--bg:#f4f8fb;--ink:#0b2540;--mute:#4a6580;--blue:#0082c3;--run:#0082c3;--walk:#1c8f5a;--card:#ffffff;--line:#d3e0ea;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#07182b;--ink:#eaf3fb;--mute:#9db6cc;--blue:#4cb4ee;--run:#4cb4ee;--walk:#52c98f;--card:#0d2640;--line:#1c3b5a}}
+:root[data-theme="dark"]{--bg:#07182b;--ink:#eaf3fb;--mute:#9db6cc;--blue:#4cb4ee;--run:#4cb4ee;--walk:#52c98f;--card:#0d2640;--line:#1c3b5a}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:520px;padding:28px 20px 40px;display:flex;flex-direction:column;gap:22px}
+h1{font-size:clamp(34px,9vw,52px);line-height:1;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0;font-family:system-ui,sans-serif;color:var(--mute);font-size:16px;line-height:1.45;max-width:60ch}
+.stage{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:28px 20px;text-align:center}
+.phase{font-size:28px;font-weight:600;color:var(--blue);min-height:34px}
+.time{font-size:clamp(96px,30vw,150px);line-height:1;font-weight:700;font-variant-numeric:tabular-nums;margin:6px 0}
+.bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--blue);transition:width .25s linear}
+.meta{display:flex;justify-content:space-between;font-family:system-ui,sans-serif;font-size:14px;color:var(--mute);margin-top:10px}
+button{font:inherit;font-size:26px;font-weight:700;border:0;border-radius:14px;padding:16px 20px;background:var(--blue);color:#fff;cursor:pointer;width:100%}
+button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);font-size:20px;margin-top:10px}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.plan{font-family:system-ui,sans-serif;font-size:14px;color:var(--mute)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Ton premier 5 km commence maintenant</h1>
+    <p>Pas besoin d’être sportif. Tu alternes 1 minute de course et 2 minutes de marche, 8 fois. Le chrono te guide.</p>
+  </div>
+  <section class="stage" aria-live="polite">
+    <div class="phase" id="phase">Prêt ?</div>
+    <div class="time" id="time">24:00</div>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="meta"><span id="round">Séance de 24 min</span><span id="total">8 × (1 + 2 min)</span></div>
+  </section>
+  <div>
+    <button id="go">Je me lance</button>
+    <button class="ghost" id="reset" hidden>Recommencer</button>
+  </div>
+  <p class="plan">Programme débutant proposé par Decathlon Running. Retrouve des plans complets dans l’application Decathlon Coach.</p>
+</main>
+<script>
+(function(){
+  var RUN=60,WALK=120,ROUNDS=8,READY=3;
+  var steps=[];
+  for(var i=1;i<=ROUNDS;i++){steps.push({n:"Course",d:RUN,r:i});steps.push({n:"Marche",d:WALK,r:i});}
+  var el=function(id){return document.getElementById(id)};
+  var phase=el("phase"),time=el("time"),fill=el("fill"),round=el("round"),total=el("total"),go=el("go"),reset=el("reset");
+  var timer=null,mode="idle",idx=0,left=0,count=READY,elapsed=0,sum=ROUNDS*(RUN+WALK);
+  function fmt(s){var m=Math.floor(s/60),r=s%60;return (m<10?"0":"")+m+":"+(r<10?"0":"")+r}
+  function buzz(){try{if(navigator.vibrate)navigator.vibrate(200)}catch(e){}}
+  function draw(){
+    if(mode==="ready"){phase.textContent="Prépare-toi";time.textContent=count;fill.style.width="0%";}
+    else if(mode==="run"){var s=steps[idx];phase.textContent=s.n==="Course"?"Cours !":"Marche";phase.style.color=s.n==="Course"?"var(--run)":"var(--walk)";time.textContent=fmt(left);fill.style.width=(elapsed/sum*100)+"%";round.textContent="Série "+s.r+" sur "+ROUNDS;total.textContent="Reste "+fmt(sum-elapsed);}
+    else if(mode==="done"){phase.textContent="Bravo, c’est fait !";phase.style.color="var(--blue)";time.textContent="🎉";fill.style.width="100%";round.textContent="Séance terminée";total.textContent="Prochaine étape : 5 km";}
+  }
+  function tick(){
+    if(mode==="ready"){count--;if(count<=0){mode="run";idx=0;left=steps[0].d;buzz();}draw();return;}
+    if(mode==="run"){elapsed++;left--;if(left<=0){idx++;if(idx>=steps.length){mode="done";clearInterval(timer);reset.hidden=false;go.hidden=true;buzz();}else{left=steps[idx].d;buzz();}}draw();}
+  }
+  go.addEventListener("click",function(){
+    mode="ready";count=READY;elapsed=0;idx=0;go.hidden=true;reset.hidden=false;draw();
+    clearInterval(timer);timer=setInterval(tick,1000);
+  });
+  reset.addEventListener("click",function(){
+    clearInterval(timer);mode="idle";go.hidden=false;reset.hidden=true;phase.textContent="Prêt ?";phase.style.color="var(--blue)";time.textContent="24:00";fill.style.width="0%";round.textContent="Séance de 24 min";total.textContent="8 × (1 + 2 min)";
+  });
+})();
+</script>
+</body>
+</html>
